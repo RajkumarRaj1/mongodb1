@@ -1,0 +1,102 @@
+1.Find all the topics and tasks which are taught in the month of October:->
+db.topics.find({
+  "date_taught": {
+    $gte: ISODate("2022-10-01T00:00:00Z"),
+    $lte: ISODate("2022-10-31T23:59:59Z")
+  }
+});
+
+db.tasks.find({
+  "date_assigned": {
+    $gte: ISODate("2022-10-01T00:00:00Z"),
+    $lte: ISODate("2022-10-31T23:59:59Z")
+  }
+});
+
+2.Find all the company drives which appeared between 15 Oct-2020 and 31-Oct-2020:->
+db.company_drives.find({
+  "date": {
+    $gte: ISODate("2020-10-15T00:00:00Z"),
+    $lte: ISODate("2020-10-31T23:59:59Z")
+  }
+});
+
+3.Find all the company drives and students who appeared for the placement:->
+db.company_drives.aggregate([
+  {
+    $lookup: {
+      from: "users",
+      localField: "students_appeared",
+      foreignField: "_id",
+      as: "students"
+    }
+  }
+]);
+
+4.Find the number of problems solved by the user in codekata:->
+db.users.aggregate([
+  {
+    $lookup: {
+      from: "codekata",
+      localField: "_id",
+      foreignField: "user_id",
+      as: "codekata_data"
+    }
+  },
+  {
+    $unwind: "$codekata_data"
+  },
+  {
+    $group: {
+      _id: "$_id",
+      name: { $first: "$name" },
+      total_problems_solved: { $sum: "$codekata_data.problems_solved" }
+    }
+  }
+]);
+
+5.Find all the mentors who have mentees count more than 15:->
+db.mentors.find({
+  "mentees_count": { $gt: 15 }
+});
+
+6.Find the number of users who are absent and tasks are not submitted between 15 Oct-2020 and 31-Oct-2020:->
+db.users.aggregate([
+  {
+    $lookup: {
+      from: "attendance",
+      localField: "_id",
+      foreignField: "user_id",
+      as: "attendance_data"
+    }
+  },
+  {
+    $unwind: "$attendance_data"
+  },
+  {
+    $lookup: {
+      from: "tasks",
+      localField: "_id",
+      foreignField: "tasks_submitted",
+      as: "task_data"
+    }
+  },
+  {
+    $match: {
+      $and: [
+        { "attendance_data.date": { $gte: ISODate("2020-10-15T00:00:00Z"), $lte: ISODate("2020-10-31T23:59:59Z") } },
+        { "attendance_data.status": "Absent" },
+        { "task_data": { $eq: [] } }
+      ]
+    }
+  },
+  {
+    $group: {
+      _id: "$_id",
+      count: { $sum: 1 }
+    }
+  }
+]);
+
+
+
